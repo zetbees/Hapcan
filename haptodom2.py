@@ -222,13 +222,20 @@ def czytaj():
         sock.connect(("192.168.1.201", 1001))
 
         while 1:
-            resp = bytearray.fromhex("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
-            resp = sock.recv(1)
-            data_temp_int = int.from_bytes(resp[1],'little')
-            if data_temp_int != 170:
-                print("Resp", resp)
-            for i in range(14):
-                resp += sock.recv(1)
+            #resp = bytearray.fromhex("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+            resp = bytearray()
+            resp = sock.recv(2)
+            # teraz sprawdzi czy początek odebranego ciągu to początek ramki
+            # próbowałem odebrać recv(1) ale zgłaszał błąd 'IndexError: index out of range'
+            if resp[1] != 0xaa:
+                print("Resp !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", resp[0], resp[1])
+                for i in range(13):
+                    resp += sock.recv(1)
+                print("nr 15",toHex(resp[14]))
+                if hap_crc(resp) == resp[13]:
+                    print("Ramka się zgadza !!!!!!!!!!!!!!!!")
+                    # teraz tu umieszczę dalszy program :)
+
 
 
 
@@ -240,7 +247,8 @@ def czytaj():
                 message = bytearray.fromhex("AA 10 90 FA F0 FF FF 07 0B FF FF FF FF 96 A5")
                 print('sending {!r}'.format(message))
                 sock.sendall(message)
-            # print(toHex(resp[1]))
+            print("to hex",(resp[1]))
+
             # print(toHex(resp[2]))
             # print(toHex(resp[3]))
             # print(toHex(resp[4]))
@@ -250,6 +258,8 @@ def czytaj():
             # print(toHex(resp[8]))
             # print(toHex(resp[9]))
             modul = resp[3]
+            if modul != 0x06:
+                print("w h")
             grupa = resp[4]
             id_urzadzenia = resp[7]
             stan = resp[8]
