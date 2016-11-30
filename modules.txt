@@ -1,5 +1,0 @@
-010A,kot³ownia
-020A,gara¿
-030B,sieñ
-070B,przedpokój
-090B,pokój D1
