@@ -3,20 +3,18 @@ def spr_temp(tempmsb,templsb):
     #funkcja odczytująca wartość temperatur z ramki
     temp = 0
     # sprawdzenie 3 bitów w starszym byte temperatury
-    for bit_nr in range(2):
+    for bit_nr in range(3):
         if (tempmsb & (1 << bit_nr)):
             temp = temp + 2 ** (bit_nr + 4)
-    # print(temp)
-    # sprawdzenie 4 bitów w młodszym byte temperatury
-    for bit_nr in range(3):
+    # sprawdzenie 4 starszych bitów w młodszym byte temperatury
+    for bit_nr in range(4):
         if (templsb & (1 << (bit_nr + 4))):
             temp = temp + 2 ** (bit_nr)
-    #print(temp)
     # sprawdzenie 4 młodszych bitów w młodszym byte temperatury
-    for bit_nr in range(3):
+    for bit_nr in range(4):
         if (templsb & (1 << (bit_nr))):
             temp = temp + 2 ** (bit_nr - 4)
-    #print(temp)
+    # sprawdzenie znaku temperatury +/-
     if (tempmsb & (1 << 4)):
         temp = temp * (-1)
     return temp
@@ -29,6 +27,8 @@ def hap_crc(ramka_str):
         h_crc = h_crc + ramka[x+1]
     h_crc = h_crc % 256
     return h_crc
+
+
 
 
 def spr_ramka(modul_r,grupa_r,data):

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Wczesna wersja ale dziala 1
 Wszystko uruchomione na Raspberry Pi, zainstalowany Domoticz, Python3, mosquitto
 Skrypt stanowi brame pomiedzy domoticzem a siecia HAPCAN - interfejs Ethernet
@@ -29,6 +29,8 @@ import threading
 import socket
 import binascii
 
+import time
+import happroc
 
 def setInterval(interval):
     def decorator(function):
@@ -49,6 +51,7 @@ def setInterval(interval):
     return decorator
 
 
+
 # ramka ethernet zmienia status domoticza
 MAPOWANIE_ETH = {
     # 1.zamieniamy nr modulu. grupa, kanal, idx w domoticzu ktoremu ma odpowiadac przekaznik
@@ -64,7 +67,12 @@ MAPOWANIE_ETH = {
     # 2.zamieniamy nr modulu. grupa, kanal, idx w domoticzu ktoremu ma odpowiadac przycisk
     # modul, grupa, kanal przysicki (przycisk modul-05, grupa -07, kanaly od 01 d o08 - odpowiadaja idx domoticza od 13 do 20)
     (0x07, 0x0b, 0x06): {'idx': 10, 0xff: '{"command": "switchlight", "idx": 10, "switchcmd": "On"}',
-                         0x00: '{"command": "switchlight", "idx": 13, "switchcmd": "Off"}', },
+                         0x00: '{"command": "switchlight", "idx": 10, "switchcmd": "Off"}', },
+    # moduł, grupa, kanał - do temperatury
+    (0x01, 0x0a, 0x11): {'idx':26},
+    (0x02, 0x0a, 0x11): {'idx':25},
+   
+
 
 
 }
@@ -91,21 +99,57 @@ MAPOWANIE_DOM = {
         (0, '0'): {'komunikat': 0x3010, 'dane': [0x04, 0x02, 0xFF, 0xFF, 0x06, 0x00, 0xFF, 0xFF, 0xFF, 0xFF]},
         (1, '0'): {'komunikat': 0x3010, 'dane': [0x04, 0x02, 0xFF, 0xFF, 0x06, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]},
     },
+    13: {
+        #                    modul  grupa           kanal   off/on
+        (0, '0'): {'komunikat': 0x3010, 'dane': [0x04, 0x02, 0xFF, 0xFF, 0x06, 0x00, 0xFF, 0xFF, 0xFF, 0xFF]},
+        (1, '0'): {'komunikat': 0x3010, 'dane': [0x04, 0x02, 0xFF, 0xFF, 0x06, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]},
+    },
 
 }
+# słownik modułów do odpytania  {komenda sterująca, dane}
+# dane [0xf0, 0xf0, 0xff, 0xff, MODUL, GRUPA, 0xff, 0xff, 0xff, 0xff
+MAPOWANIE_MOD = {
+    # Przyciski
+    1: {'komunikat': 0x1090, 'dane': [0xf0, 0xf0, 0xff, 0xff, 0x01, 0x0a, 0xff, 0xff, 0xff, 0xff]},
+    2: {'komunikat': 0x1090, 'dane': [0xf0, 0xf0, 0xff, 0xff, 0x02, 0x0a, 0xff, 0xff, 0xff, 0xff]},
+
+
 IGNOROWANIE = {}
 
-OKRES_CZASU = {}
+OKRES_CZASU = {1:0}
 OKRES_CZASU[1] = 0
 
-#@setInterval(10)  # Wysylanie zapytania do 100 sekund
-def pytanie_o_status():
+@setInterval(10)
+def co_10():
+    print("co 10 sekund")
+    okres_czasu = OKRES_CZASU.get(1)
+    okres_czasu = okres_czasu +1
+    komenda = MAPOWANIE_MOD.get(okres_czasu, None)
+    #print(okres_czasu)
+    if komenda is not None:
+        print("komenda do wysłania do Hapcana", komenda)
+        wyslij(komenda['komunikat'], komenda['dane'])
+        OKRES_CZASU[1] = okres_czasu
+    else:
+        OKRES_CZASU[1]=0
 
-    OKRES_CZASU[1] = 1
-    print("pytanie_o_status do Hapcana",OKRES_CZASU[1])
+
+
+@setInterval(60)  # Wysylanie zapytania do 100 sekund
+def pytanie_o_status():
+    print("pytanie_o_status do Hapcana",)
+    
     # 5.zamieniamy numer modulu i grupe na swoja (tu 01,02)
     # status przekaznikow                   modul grupa
-    #wyslij(0x1090, [0xf0, 0xf0, 0xff, 0xff, 0x1c, 0x0b, 0xff, 0xff, 0xff, 0xff])
+    #wyslij(0x1090, [0xf0, 0xf0, 0xff, 0xff, 0x01, 0x0a, 0xff, 0xff, 0xff, 0xff])
+    #wyslij(0x1090, [0xf0, 0xf0, 0xff, 0xff, 0x02, 0x0a, 0xff, 0xff, 0xff, 0xff])
+    #wyslij(0x1090, [0xf0, 0xf0, 0xff, 0xff, 0x03, 0x0b, 0xff, 0xff, 0xff, 0xff])
+    #wyslij(0x1090, [0xf0, 0xf0, 0xff, 0xff, 0x06, 0x0b, 0xff, 0xff, 0xff, 0xff])
+    #wyslij(0x1090, [0xf0, 0xf0, 0xff, 0xff, 0x07, 0x0b, 0xff, 0xff, 0xff, 0xff])
+    #wyslij(0x1090, [0xf0, 0xf0, 0xff, 0xff, 0x08, 0x0b, 0xff, 0xff, 0xff, 0xff])
+    #wyslij(0x1090, [0xf0, 0xf0, 0xff, 0xff, 0x0b, 0x0b, 0xff, 0xff, 0xff, 0xff])
+    #wyslij(0x1090, [0xf0, 0xf0, 0xff, 0xff, 0x0c, 0x0b, 0xff, 0xff, 0xff, 0xff])
+    #wyslij(0x1090, [0xf0, 0xf0, 0xff, 0xff, 0xcf, 0x0b, 0xff, 0xff, 0xff, 0xff])
     # 6.zamieniamy numer modulu i grupe na swoja (tu 05,07)
     # status przyciskow                     modul grupa
     #wyslij(0x1090, [0xf0, 0xf0, 0xff, 0xff, 0x07, 0x0b, 0xff, 0xff, 0xff, 0xff])
@@ -120,7 +164,7 @@ def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode('ascii'))
     except ValueError:
-        print("Błąd formatu json", str(msg))
+        #print("Błąd formatu json", str(msg))
         return
     # print("wiadomosc", payload)
     idx = payload['idx']
@@ -135,14 +179,14 @@ def on_message(client, userdata, msg):
         # znajdz komenda dla danego idx i nvalue
         komendy = MAPOWANIE_DOM.get(idx, None)
         klucz = (nvalue, svalue1)
-        # print("komendy", komendy, klucz)
+        #print("komendy", komendy, "Klucz",klucz)
         if komendy is not None:
             komenda = komendy.get((nvalue, svalue1), None)
-            # print("komenda", komenda)
-            if komenda is not None:
+            print("komenda do wysłania do Hapcana od Domoticza", komenda)
+            #if komenda is not None:
                 # print("Wysylem ", komenda['komunikat'], komenda['dane'])
                 # print("Wysylem ",komenda['komunikat'], komenda['dane'])
-                wyslij(komenda['komunikat'], komenda['dane'])
+                #wyslij(komenda['komunikat'], komenda['dane'])
     else:
         IGNOROWANIE[idx] = ignoruj - 1
 
@@ -158,13 +202,13 @@ def hap_crc(ramka):
 
 def wyslij(id_komunikatu, dane):
     try:
-        # print("wyslij")
+        #print("wyslij")
         proto = socket.getprotobyname('tcp')
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, proto)
 
         sock.connect(("192.168.1.201", 1001))
         # msg = bytearray.fromhex(toHex(id_komunikatu))
-        print("id hex = ", toHex(id_komunikatu))
+        #print("id hex = ", toHex(id_komunikatu))
 
         msg = bytearray()
         msg.append(0xAA)
@@ -213,41 +257,59 @@ def czytaj():
     client.loop_start()
 
     pytanie_o_status()
-
+    co_10()
     proto = socket.getprotobyname('tcp')
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, proto)
 
     try:
         # 8. Ip i port modulu HAPCAN ethernet
-        sock.connect(("192.168.1.201", 1001))
+        sock.connect(("192.168.1.201", 1002))
 
         while 1:
-            #resp = bytearray.fromhex("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
             resp = bytearray()
-            resp = sock.recv(2)
+            resp = sock.recv(1)
             # teraz sprawdzi czy początek odebranego ciągu to początek ramki
-            # próbowałem odebrać recv(1) ale zgłaszał błąd 'IndexError: index out of range'
-            if resp[1] != 0xaa:
-                print("Resp !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", resp[0], resp[1])
-                for i in range(13):
+            if resp[0] == 0xaa:
+                #print("Resp !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", )
+                for i in range(14):
                     resp += sock.recv(1)
-                print("nr 15",toHex(resp[14]))
+                #print("nr 15",toHex(resp[14]))
                 if hap_crc(resp) == resp[13]:
-                    print("Ramka się zgadza !!!!!!!!!!!!!!!!")
-                    # teraz tu umieszczę dalszy program :)
+                    #print("Ramka się zgadza !!!!!!!!!!!!!!!!")
+                    modul = resp[3]
+                    grupa = resp[4]
+                    id_urzadzenia = resp[7]
+                    stan = resp[8]
+                    if resp[1] == 0x30: #rozkaz stanu
+                        #print("Rozkaz stanu", "to hex",toHex(resp[2]))
+                        if resp[2] == 0x00: # ramka czasu
+                            print("Ramka czasu",toHex(resp[3]),toHex(resp[4]) )
+                            message = bytearray.fromhex("AA 10 90 FA F0 FF FF 07 0B FF FF FF FF 96 A5")
+                            #print('sending z ramki czasu {!r}'.format(message))
+                            #sock.sendall(message)
+                        if resp[2] == 0x40 or resp[2] == 0x41: # ramka przycisku
+                            #print("Ramka przycisku",)
+                            if resp[7] == 0x11: # ramka temperatury
+                                tt1 = happroc.spr_temp(resp[8], resp[9])
+                                print("Temperatura to ",tt1," ramka",resp, resp[8],resp[9])
+                                komendy = MAPOWANIE_ETH.get((modul, grupa, id_urzadzenia), None)
+                                if komendy is not None:
+                                    idx = komendy['idx']
+                                    komenda = '{"idx": '+ str(idx) + ', "nvalue" : 0, "svalue" : "' + str(tt1) + '"}'
+                                    print("Komenda to ...",komenda)
+                                    client.publish("domoticz/in", komenda)
+                            # teraz tu umieszczę dalszy program :)
+                            #komenda2='{"idx": 14, "nvalue" : 15, "svalue" : "18.1"}'
+                    # teraz trzeba odczytać rzokaz ramki
+                    #data_temp_int = int.from_bytes(resp[2], 'little')
+                    #print(data_temp_int)
 
 
 
 
-            print('z Hapcana ramka 15  = ', binascii.hexlify(resp))
-            print("okres", OKRES_CZASU[1])
-            if OKRES_CZASU[1] != 1 :
-                print("Okres czasu !")
-                OKRES_CZASU[1] = 0
-                message = bytearray.fromhex("AA 10 90 FA F0 FF FF 07 0B FF FF FF FF 96 A5")
-                print('sending {!r}'.format(message))
-                sock.sendall(message)
-            print("to hex",(resp[1]))
+            #print('z Hapcana ramka 15  = ', binascii.hexlify(resp))
+
+            #print("to hex",(resp[1]))
 
             # print(toHex(resp[2]))
             # print(toHex(resp[3]))
@@ -257,14 +319,9 @@ def czytaj():
             # print(toHex(resp[7]))
             # print(toHex(resp[8]))
             # print(toHex(resp[9]))
-            modul = resp[3]
-            if modul != 0x06:
-                print("w h")
-            grupa = resp[4]
-            id_urzadzenia = resp[7]
-            stan = resp[8]
 
-            print("modul", toHex(modul), "grupa ", toHex(grupa), "kanal", toHex(id_urzadzenia), "stan", toHex(stan))
+
+            #print("modul", toHex(modul), "grupa ", toHex(grupa), "kanal", toHex(id_urzadzenia), "stan", toHex(stan))
 
             komendy = MAPOWANIE_ETH.get((modul, grupa, id_urzadzenia), None)
             if komendy is not None:
