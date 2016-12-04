@@ -4,9 +4,15 @@ scripts in Python 3 for Hapcan BMS
 [PL]
 [PL] ver. 0.012 alpha Wczesna faza skryptu
 
-Co nowego: [ver. 0.012 alpha]
+Co nowego: 
+[ver. 0.013 alpha]
+- dodano obsługę termostatów
+- dodano obsługe błędów do logu tekstowego
+- zmieniono czas odpytywania modułów - wszystkie po kolei co 2 sekundy a następnie co 100 sekund ponowienie sekwencji
 
-- przekonstruowano w pętki 'czytaj' pobieranie ramek - najpierw szuka początkowego bajtu a potem dopiero pobiera resztę ramki
+[ver. 0.012 alpha]
+
+- przekonstruowano w pętli 'czytaj' pobieranie ramek - najpierw szuka początkowego bajtu a potem dopiero pobiera resztę ramki
 - sprawdza sumę kontrolną odebranej ramki
 - poprawiono odczyt temeperatur
 - wysyłanie zapytań do Hapcana co 10sek 1 kolejny moduł - wyeliminowało to tłok na magistrali CAN i teraz bez problemu pętla 'czytaj' radzi sobie z przykmowaniem ramek
