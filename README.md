@@ -2,9 +2,14 @@
 scripts in Python 3 for Hapcan BMS
 
 [PL]
-[PL] ver. 0.012 alpha Wczesna faza skryptu
+
 
 Co nowego: 
+[ver 0.020 alpha]
+- zmieniono i znacznie uproszczono dodawanie modułów i elementów systemu Hapcan - wystarczy obecnie wpisać spis wszystkich modułów w 1 zmiennej słownikowej oraz tylko w jednym miejscu przypisania poszczególnych elementów Hapcana do Domoticza - reszta tworzona jest dynamicznie
+- zmieniono sposób tworzenia komunikatu do Hapcana - też tworzony dynamicznie a nie słownikowy
+- dodano możliwość przesyłania danych temepratury do serwisu ThingSpeak
+
 [ver. 0.013 alpha]
 - dodano obsługę termostatów
 - dodano obsługe błędów do logu tekstowego
@@ -20,11 +25,5 @@ Co nowego:
 - wyeliminowano rozłączanie się pętli 'czytaj' poprzez rozdzielenie portów do odczytu i zapytań
 
 
-Zadania: sterowanie automatyką Hapcan za pomocą pliku z rozkazami odczytywanie danych z temperatury i zapis do bazy/logu zapis logów z systemu Hapcan
 
-Problemy [do kompio] - częściowo wyeliminowane - inne informacje i wcześniejsze wersje w branchu alpha-alpha
-
-- używając Twojego skryptu też zdarzył mi się błąd formatu json - w momencie kliknięcia na przypisany switch w Domoticzu - konkretnie idx 11. Inne przyjmował bez problemu. (zrzut w pliku 'Java_Printing.pdf')
-- problemem też było, że gdy włączał się interwał i zaczął wysyłać do Hapcana to przestał z niego odczytywać - mam wrażenie że zamknięcie socketu w procedurze wyślij rozłączało też socket w "czytaj" - próbowałem to zmodyfikować umieszczając "zmienną globalną 'Okres_czasu' ale nie do końca działało
-- raz zdarzyło się że wystąpił błąd początku ramki - i potem wszystkie następne były przesunięte z tego względu próbowałem inaczej  napisać pętlę odczytu, aby odczytać 1 bajt, sprawdzić czy to xAA jeśli tak odczytać resztę 
 
