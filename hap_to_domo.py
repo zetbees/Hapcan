@@ -1,4 +1,4 @@
-""""
+﻿""""
 Skrypt stanowi brame pomiedzy domoticzem a siecia HAPCAN - interfejs Ethernet
 uruchomiony mosquitto
 W domoticzu w sekcji sprzet dodajemy - MQTT Client Gateway with LAN interface port 1883 ip 127.0.0.1
@@ -49,8 +49,7 @@ def setInterval(interval):
 #formant (moduł,grupa):opis - możliwy zapis dziesiętny lub HEX
 MAPOWANIE_MOD = {
     (1,10):'BUT kotłownia',
-    (2,10):'BUT garaż',
-    (25,11):'SW Tech 1',
+    
 }
 
 
@@ -58,11 +57,16 @@ MAPOWANIE_MOD = {
 # dodatkowo można wykorzystać niektóre czujniki np. temeratury do zapisu do bazy ThingSpeac - wtedy należy dopisać dane pole_th - zgodne z nazwą w kanale i klucz czyli API key
 #- możliwy zapis dziesiętny lub HEX
 MAPOWANIE_HAP ={
-    (0x1a, 0x0b, 0x01):{'idx':43,'dtype': 'Light/Switch', 'switchType': 'On/Off','pole_th':'field1', 'klucz_th': 'XXX'},
-    (0x0a, 0x0b, 0x05):{'idx':45,'dtype': 'Light/Switch', 'switchType': 'Blinds Percentage'},
-    (0x06, 0x0b, 0x11):{'idx':23,'dtype': 'Temp','stype': 'LaCrosse TX3'},
-    (0x07, 0x0b, 0x14):{'idx':27,'dtype': 'Thermostat','stype': 'SetPoint'},
-    (25,11,1):{'idx':37,'dtype': 'Light/Switch', 'switchType': 'On/Off'},
+    # butony
+    (0x01, 0x0a, 0x11): {'idx': 26, 'pole_th': 'field1', 'klucz_th': ''},
+    (0xcf, 0x0b, 0x11): {'idx': 19},
+    # SW T1
+    (25,11,1):{'idx':37,'dtype': 'Light/Switch', 'switchType': 'On/Off','nazwa':'Lampa Gabinet PN'},
+    # termostat
+    (0x01, 0x0a, 0x14): {'idx': 70},
+    # rolety
+    (0x28, 0x0e, 0x01): {"idx": 62, "nvalue": 2, "svalue": "90",'czas_rol':20},
+
 }
 
 MAPOWANIE_DOM ={}
@@ -78,7 +82,10 @@ OKRES_CZASU = {
     2:0,  # flaga okresowego odczytu 1x na dobę
     3:0,
 }
-#OKRES_CZASU[1] = 0
+FLAGI = {
+    1:0,
+    2:{'flaga':0,'nodes':(0,0,0),'procent':0}, # flaga sprawdzania rolety
+}
 
 
 
@@ -86,7 +93,7 @@ OKRES_CZASU = {
 
 # utworzenie słownika idx Domoticza
 ks = list(MAPOWANIE_HAP.keys())
-#ks.sort()
+#ks. sort()
 #indeks=0
 for key in ks:
     komendy = MAPOWANIE_HAP.get(key, None)
@@ -135,7 +142,7 @@ def odczyt_mod():
 
 
 
-@setInterval(60)  # Wysylanie zapytania do 100 sekund
+@setInterval(600)  # Wysylanie zapytania do 100 sekund
 def pytanie_o_status():
     print("pytanie_o_status do Hapcana",OKRES_CZASU, "Ignoruj", IGNOROWANIE)
     OKRES_CZASU[1]=1
@@ -149,7 +156,7 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode('ascii'))
-        print("wiadomosc od Domoticza ", payload)
+        #print("wiadomosc od Domoticza ", payload)
         idx = payload['idx']
         typ_idx = payload['dtype']
         nvalue = payload['nvalue']
@@ -172,7 +179,7 @@ def on_message(client, userdata, msg):
     ignoruj = IGNOROWANIE.get(idx, 0)
     # print("ignoruj", ignoruj)
     if ignoruj is 0:
-        komunikat= 0x10A0,
+        komunikat= 0x10A0
         dane = [0xF0, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF]
         # dane': [0xF0, 0xF0, 0x01, 0x01, 0x19, 0x0b, 0x00, 0xFF, 0xFF, 0xFF]},
         # znajdz komenda dla danego idx i nvalue
@@ -193,12 +200,35 @@ def on_message(client, userdata, msg):
                         dane[5]=nodes[1]
                         print (dane)
                         wyslij(komunikat,dane)
+                    if typ_switch == 'Blinds Percentage':
+                        print('moja roleta !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!', payload)
+                        FLAGI[1] =1
+                        ustaw_roleta(nodes,nvalue,svalue1)
                         #print("Wysylem ", komenda['komunikat'], komenda['dane'])
-                # print("Wysylem ",komenda['komunikat'], komenda['dane'])
-                 #wyslij(komenda['komunikat'], komenda['dane'])
+                        # print("Wysylem ",komenda['komunikat'], komenda['dane'])
+                        #wyslij(komenda['komunikat'], komenda['dane'])
     else:
         IGNOROWANIE[idx] = ignoruj - 1
 
+
+def ustaw_roleta(nodes,nvalue,svalue1):
+    map_temp = {'nodes': nodes}
+    if nvalue < 2:
+        procent = 100 * nvalue
+    else:
+        procent = int(svalue1)
+    map_temp2 = {'procent': procent}
+    map_temp.update(map_temp2)
+
+    FLAGI[2] = map_temp
+    # FLAGI = {
+    #'dane': [0xf0, 0xf0, 0xff, 0xff, 0x28, 0x0e, 0xff, 0xff, 0xff, 0xff]},
+    print("@@@ a roleta to flagi: ",FLAGI)
+    komunikat = 0x1090
+    dane = [0xF0, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF]
+    dane[4] = nodes[0]
+    dane[5] = nodes[1]
+    wyslij(komunikat,dane)
 
 def hap_crc(ramka):
     h_crc = 0
@@ -252,19 +282,18 @@ def czytaj():
 
     try:
         # 8. Ip i port modulu HAPCAN ethernet
-        sock.connect(("192.168.1.201", 1002))
+        sock.connect(("192.168.1.1", 1002))
 
         while True:
             #resp = bytearray()
             resp = sock.recv(1)
             # teraz sprawdzi czy początek odebranego ciągu to początek ramki
             if resp[0] == 0xaa:
-                #print("Resp !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",binascii.hexlify(resp) )
+                # pobranie pozostałej części ramki
                 for i in range(14):
                     resp += sock.recv(1)
-                #print("nr 15",toHex(resp[14]))
+                # sprawdzenie sumy kontrolnej
                 if hap_crc(resp) == resp[13]:
-                    #print("Ramka się zgadza !!!!!!!!!!!!!!!!",binascii.hexlify(resp))
                     modul = resp[3]
                     grupa = resp[4]
                     id_urzadzenia = resp[7]
@@ -275,16 +304,19 @@ def czytaj():
                             print("Ramka czasu",toHex(resp[3]),toHex(resp[4]) )
                             czas_pracy = OKRES_CZASU.get(3)
                             czas_pracy = czas_pracy+1
-                            OKRES_CZASU[3] =czas_pracy
+                            OKRES_CZASU[3] = czas_pracy
                         if resp[2] == 0x20 or resp[2] == 0x21:  # ramka przekaźnika
-                            print("Ramka przekaźnika", )
                             komendy = MAPOWANIE_HAP.get((modul, grupa, id_urzadzenia), None)
                             if komendy is not None:
                                 idx = komendy['idx']
-                                print("Stan switcha",stan)
-                                komenda = '{"idx": ' + str(idx) + ', "nvalue" : ' +str(stan) + ', "svalue" : "0"}'
+                                nazwa = komendy['nazwa']
+                                print("Stan switcha",nazwa," ",str(stan & 1))
+                                komenda = '{"idx": ' + str(idx) + ', "nvalue" : ' +str(stan &1) + ', "svalue" : "0"}'
                                 IGNOROWANIE[idx] = IGNOROWANIE.get(idx, 0) + 1
                                 client.publish("domoticz/in", komenda)
+                            else:
+                                print('Brak opisu przekaźnika !!!')
+
                         if resp[2] == 0x40 or resp[2] == 0x41: # ramka przycisku
                             #print("Ramka przycisku",)
                             if resp[7] == 0x11: # ramka temperatury
@@ -323,6 +355,39 @@ def czytaj():
 
                         if resp[2] == 0x70 or resp[2] == 0x71:  # ramka rolety
                             #print("Ramka rolety", procent)
+                            if FLAGI[1]:
+                                map_temp = FLAGI[2]
+                                nodes = map_temp.get('nodes')
+                                procent = map_temp.get('procent')
+                                if id_urzadzenia == nodes[2]:
+                                    if resp[9] == 0:  # sprawdza czy nie jest w ruchu
+                                        map_temp2 = MAPOWANIE_HAP.get(nodes)
+                                        czas_rol = map_temp2.get('czas_rol')
+                                        komunikat = 0x10A0
+                                        dane = [0xF0, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF]
+                                        dane[3] = 2 ** (nodes[2] - 1)
+                                        dane[4] = nodes[0]
+                                        dane[5] = nodes[1]
+                                        #stan = stan / 255 * 100
+                                        ile_czasu = czas_rol*((stan/2.55) - procent)/100
+                                        if ile_czasu < 0:
+                                            dane[2]=0x04
+                                        else:
+                                            dane[2]=0x03
+                                        print("**********************************************", komunikat, "dane", dane,"; procent", procent, "; stan rolety", stan, "; ile czasu", ile_czasu)
+                                        wyslij(komunikat,dane)
+                                        dane[2]=0
+                                        dane[6]=int(round(abs(ile_czasu),0))
+                                        print("**********************************************", komunikat, "dane", dane)
+                                        wyslij(komunikat, dane)
+
+
+                                        FLAGI[1] = 0
+
+
+
+
+                                    
                             komendy = MAPOWANIE_HAP.get((modul, grupa, id_urzadzenia), None)
                             if komendy is not None:
                                 idx = komendy['idx']
@@ -354,12 +419,12 @@ if __name__ == "__main__":
     client.on_connect = on_connect
     client.on_message = on_message
     # 7. ip i port mosquitto (domyslne ustawiania)
-    client.connect("127.0.0.1", 1883, 60)
-
+    #client.connect("127.0.0.1", 1883, 60)
+    client.connect("", 1883, 60)
+    #http: // vps354642.ovh.net /
     client.loop_start()
     odczyt_mod() # wywołanie proedury odpytującej wszystkie moduły co 2
     pytanie_o_status() # wywołanie procedury wykonywanej co 10 minut
-    #os.execvp('c:\Program Files(x86)\mosquitto\','mosquitto.exe')
     czytaj()
 
 
