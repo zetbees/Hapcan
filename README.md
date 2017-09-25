@@ -5,6 +5,10 @@ scripts in Python 3 for Hapcan BMS
 
 
 Co nowego: 
+[ver 0.022 alpha]
+- wprowadzono obsługę pliki hapcan.ini
+- rozbudowano moduł hap_proc o funkcję wysyłania maili oraz funcję okresowego sprawadzania Domoticza - czy działa
+
 [ver 0.021 alpha]
 - poprawiono bład obsługi przekaźników w Domoticzu
 - dodano obsługę rolet poprzez procentowy moduł rolety w Domoticzu ('Blinds Percentage')
