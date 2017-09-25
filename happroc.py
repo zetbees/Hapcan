@@ -50,6 +50,77 @@ def spr_ramka(modul_r,grupa_r,data):
     return sukces
 
 
+def mailnij(tekst_maila,temat_maila):
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        #
+        sukces = -255
+        config = configparser.ConfigParser()
+        config.read('hapcan.ini')
+        #pobiera dane z sekcji [mails] pliku .INI
+        gmail_user = config.get('mails', 'gmail_user')
+        gmail_password = config.get('mails', 'gmail_password')
+        mail_to = config.get('mails', 'mail_to')
+        msg = MIMEText(tekst_maila)
+        msg['Subject'] = temat_maila
+        msg['From'] = gmail_user
+        msg['To'] = mail_to
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server.ehlo()
+        server.login(gmail_user, gmail_password)
+        server.sendmail(gmail_user, [mail_to], msg.as_string())
+        print('Wysłano maila do : '+ mail_to)
+        sukces=1
+    except Exception as bld:
+        print('Błąd podczas wysylania maila', bld)
+        plik = open("errory.log", mode="a+")
+        plik.write(time.asctime() + ',' + str(bld) + '\n')
+        pass
+    finally:
+        server.quit()
+    return sukces
+
+def spr_status_domoticz():
+    import requests
+    import json
+    from datetime import datetime
+    sukces = -255
+    try:
+        config = configparser.ConfigParser()
+        config.read('hapcan.ini')
+        user_domo = config.get('domoticz', 'user')
+        alert_time = int(config.get('domoticz', 'alert'))
+        if len(user_domo):
+            url = 'http://' + user_domo + ':' + config.get('domoticz', 'pass') + '@' + config.get(
+            'domoticz', 'adres') + ':' + config.get('domoticz', 'port') + '/json.htm'
+        else:
+            url = 'http://' + config.get('domoticz', 'adres') + ':' + config.get('domoticz', 'port') + '/json.htm'
+        postdata = {'type': 'devices', 'rid': config.get('domoticz', 'idx_spr')}
+        headers = {'content-type': 'application/json'}
+        resp = requests.get(url=url, params=postdata)
+        dev_data = json.loads(resp.text)
+        rez_temp = (dev_data['result'])
+        dev_result = (rez_temp[-1])
+        dev_last = dev_result['LastUpdate']
+        datetime_object = datetime.strptime(dev_last, '%Y-%m-%d %H:%M:%S')
+        data_obecna = datetime.now()
+        spr_time =int(((data_obecna.timestamp() - datetime_object.timestamp()) / (60 * 60)))
+        if spr_time > alert_time:
+            print('Domoticz chyba nie działa')
+        else:
+            sukces=1
+    except Exception as bld:
+        print('Błąd podczas sprawdzania domoticz', bld)
+        plik = open("errory.log", mode="a+")
+        plik.write(time.asctime() + ',' + str(bld) + '\n')
+        pass
+    #finally:
+        #
+    return sukces
+
+
+
 
 
 
