@@ -1,0 +1,6 @@
+Dodano skrypt do odczytania wszystkich urządzeń z Domoticz i zaspianiu ich do pliku *.csv
+Uwagi:
+- dane http i logowania do Domoticz muszą się znajdować w pliku Hapcan.ini (sekcja Domoticz0
+- etykiety które nas interesują z poszczególnych urządzeń zapisujemy w pierwszym wierszu pustego pliku domoticz_idx.csv
+- wskazane jako pierwsze umieszczenie 'idx'
+- format zapisu i utworzenia pliku *.csv zgodny z Excelem - znak rozdzielający to ';'
