@@ -66,6 +66,8 @@ MAPOWANIE_HAP ={
     (0x01, 0x0a, 0x14): {'idx': 70},
     # rolety
     (0x28, 0x0e, 0x01): {"idx": 62, "nvalue": 2, "svalue": "90",'czas_rol':20},
+    # dimmer
+    (32,6,1):{'idx':81,'dtype': 'Light/Switch', 'switchType': 'Dimmer','nazwa':'Dimmer'},
 
 }
 
@@ -207,6 +209,12 @@ def on_message(client, userdata, msg):
                         #print("Wysylem ", komenda['komunikat'], komenda['dane'])
                         # print("Wysylem ",komenda['komunikat'], komenda['dane'])
                         #wyslij(komenda['komunikat'], komenda['dane'])
+                    if typ_switch == 'Dimmer': # tylko ON/OFF
+                        dane[2]= 0
+                        dane[3]= int(payload['Level']*2.55)
+                        dane[4]=nodes[0]
+                        dane[5]=nodes[1]
+                        wyslij(komunikat,dane)
     else:
         IGNOROWANIE[idx] = ignoruj - 1
 
@@ -383,7 +391,21 @@ def czytaj():
 
 
                                         FLAGI[1] = 0
-
+                        if resp[2] == 0x60 or resp[2] == 0x61:  # ramka Dimmera
+                            #print("Ramka dimera nr kanału", resp[7], resp[8])
+                            if resp[7] == 1:
+                                proc_dimer = int((resp[8]/255)*100)
+                                print("Żarówka na %", proc_dimer)
+                                komendy = MAPOWANIE_HAP.get((modul, grupa, id_urzadzenia), None)
+                                if komendy is not None:
+                                    idx = komendy['idx']
+                                    nazwa = komendy['nazwa']
+                                    print("Stan dimera", nazwa, " ", proc_dimer)
+                                    komenda = '{"command": "switchlight", "idx": ' + str(idx) + ', "switchcmd": "Set Level", "level": '+ str(proc_dimer) + ' }'
+                                    IGNOROWANIE[idx] = IGNOROWANIE.get(idx, 0) + 1
+                                    client.publish("domoticz/in", komenda)
+                                else:
+                                    print('Brak opisu dimera !!!')
 
 
 
